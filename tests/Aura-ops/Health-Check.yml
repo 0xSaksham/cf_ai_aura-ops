@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: https://aura-ops.sakshamgupta-ai.workers.dev/health
+  url: https://cf_ai_aura-ops.sakshamgupta-ai.workers.dev/health
   headers:
     - name: Content-Type
       value: application/json

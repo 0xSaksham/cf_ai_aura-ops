@@ -22,4 +22,4 @@ extensions:
     presets:
       request:
         type: http
-        url: https://aura-ops.sakshamgupta-ai.workers.dev/
+        url: https://cf_ai_aura-ops.sakshamgupta-ai.workers.dev/

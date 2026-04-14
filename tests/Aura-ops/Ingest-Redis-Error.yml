@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: https://aura-ops.sakshamgupta-ai.workers.dev/ingest/auth-api
+  url: https://cf_ai_aura-ops.sakshamgupta-ai.workers.dev/ingest/auth-api
   headers:
     - name: Content-Type
       value: application/json
