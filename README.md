@@ -44,7 +44,11 @@ graph TD
 ## 🛠️ Proof of Concept
 The following shows the engine processing an incident in real-time. Aura-Ops receives the raw logs, performs anomaly detection, and triggers the Workers AI Copilot to provide an actionable fix:
 
-![Aura-Ops Test Suite](public/image.png)
+![Aura-Ops Test Suite](public/error.png)
+
+<p>Chat Section: Sent Via Bruno, please check tests/Aura-Ops folder for the configuration:</p>
+
+![Aura-Ops Chat](public/chat.png)
 
 ## 🛤️ Roadmap & Future Improvements
 

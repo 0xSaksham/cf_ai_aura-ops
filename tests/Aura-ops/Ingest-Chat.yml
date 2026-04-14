@@ -1,0 +1,24 @@
+info:
+  name: Ingest-Chat
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: https://cf_ai_aura-ops.sakshamgupta-ai.workers.dev/chat/auth-api
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "message" : "Give me a summary of the system health."
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

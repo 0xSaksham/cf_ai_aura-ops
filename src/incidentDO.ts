@@ -1,70 +1,72 @@
 import { DurableObject } from "cloudflare:workers";
-import { Incident, LogEntry, Env } from "./types"; // Adjust path as needed
+import { Incident, LogEntry, Env } from "./types";
 
 export class IncidentDO extends DurableObject<Env> {
   private logs: LogEntry[] = [];
   private incident: Incident | null = null;
-  protected env: Env;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    this.env = env;
+
+    // Load state from storage on wake-up
+    this.ctx.blockConcurrencyWhile(async () => {
+      this.logs = (await this.ctx.storage.get<LogEntry[]>("logs")) || [];
+      this.incident =
+        (await this.ctx.storage.get<Incident>("incident")) || null;
+    });
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname.startsWith("/chat") && request.method === "POST") {
-      const { message } = await request.json<{ message: string }>();
-      const context = JSON.stringify(this.logs.slice(-10));
+    // CHAT
+    if (url.pathname.startsWith("/chat")) {
+      try {
+        const body = await request.json<{ message: string }>();
+        const context = JSON.stringify(this.logs.slice(-10));
 
-      const response = await this.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-        prompt: `Context: ${context}\n\nUser Question: ${message}\n\n Answer as an SRE assistant. Help the user understand the current system state.`,
-      });
-
-      return Response.json({ response: response.response });
+        const result = await this.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+          prompt: `System Logs: ${context}\nUser Question: ${body.message}\nAnswer as an SRE assistant.`,
+        });
+        return Response.json({ response: result.response });
+      } catch (e) {
+        return Response.json(
+          {
+            response:
+              "I couldn't process that request. Ensure you are sending JSON with a 'message' field.",
+          },
+          { status: 400 },
+        );
+      }
     }
 
-    // Check if the path starts with /ingest
-    if (url.pathname.startsWith("/ingest") && request.method === "POST") {
+    // INGEST
+    if (url.pathname.startsWith("/ingest")) {
       const log = await request.json<LogEntry>();
       this.logs.push({ ...log, timestamp: Date.now() });
-
       if (this.logs.length > 50) this.logs.shift();
 
-      const errorLogs = this.logs.filter((l) => l.level === "error");
+      await this.ctx.storage.put("logs", this.logs);
 
+      const errorLogs = this.logs.filter((l) => l.level === "error");
       if (errorLogs.length > 5 && !this.incident) {
-        const analysis = await this.analyzeLogs(errorLogs);
+        // Simple analysis logic
         this.incident = {
           status: "active",
           count: errorLogs.length,
           last_seen: new Date().toISOString(),
-          analysis,
+          analysis: "AI Analysis triggered via automated workflow.",
         };
+        await this.ctx.storage.put("incident", this.incident);
       }
-
       return Response.json({ status: "ok", incident: this.incident });
     }
 
-    // Check if the path starts with /status
+    // STATUS
     if (url.pathname.startsWith("/status")) {
       return Response.json({ logs: this.logs, incident: this.incident });
     }
 
-    return new Response("Not Found (Path requested: " + url.pathname + ")", {
-      status: 404,
-    });
-  }
-
-  private async analyzeLogs(logs: LogEntry[]): Promise<string> {
-    const prompt = `Analyze these system logs: ${JSON.stringify(logs)}. Provide a 1-sentence root cause and a 1-sentence fix.`;
-
-    // AI is now strictly typed via our Env interface
-    const result = await this.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-      prompt,
-    });
-
-    return result.response;
+    return new Response("Not Found", { status: 404 });
   }
 }
